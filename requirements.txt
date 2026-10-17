@@ -1,0 +1,4 @@
+# 本项目只依赖 Python 标准库（http.server / zipfile / urllib / mmap / zlib / lzma / bz2）
+# 因此不需要安装任何第三方包，也不需要 tkinter。
+#
+# 要求：Python 3.9+（推荐 3.10+），Windows 10/11 或 Linux。

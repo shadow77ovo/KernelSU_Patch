@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KernelSU LKM 镜像修补工具 · 网页版</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>KernelSU LKM 镜像修补工具</h1>
+    <p>选择 boot / init_boot 镜像 + KernelSU 官方 APK，直接产出可刷入的补丁镜像</p>
+  </div>
+  <div class="chip" id="engineChip">引擎：检测中…</div>
+</header>
+
+<main>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="step">1</span>
+      <h2>选择引导镜像</h2>
+      <span class="hint">从 OTA 全量包云提取，或选本地镜像</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" type="button" data-pane="ota">云提镜像</button>
+      <button class="tab" type="button" data-pane="local">本地镜像</button>
+    </div>
+
+    <div id="paneOta">
+      <div class="row tight">
+        <input
+          id="otaSource"
+          class="text"
+          spellcheck="false"
+          placeholder="OTA 全量包直链，例如 https://....zip"
+        />
+        <button class="ghost btn-pair" id="btnScan" type="button">扫描分区</button>
+        <button class="primary btn-pair" id="btnExtract" type="button">提取</button>
+      </div>
+      <div class="row tight">
+        <label class="lbl">提取分区</label>
+        <select id="otaPart"><option value="">先点「扫描分区」</option></select>
+        <span class="hint">只下载该分区对应的数据，不必下整个包</span>
+      </div>
+      <div class="progress slim"><i id="progOta"></i></div>
+      <div class="info" id="infoOta">粘贴 OTA 全量包直链（小米/其他厂商均可），先「扫描分区」再「提取」</div>
+    </div>
+    <div id="paneLocal" class="hidden">
+      <label class="drop" id="dropImage">
+        <input type="file" id="fileImage" accept=".img,application/octet-stream" hidden />
+        <div class="drop-inner">
+          <strong>点击选择</strong><span>或把 boot / init_boot 镜像拖到这里</span>
+          <em>单个文件最大 2 GB</em>
+        </div>
+      </label>
+      <div class="progress slim"><i id="progImage"></i></div>
+
+      <div class="divider">或者从本地固件包提取</div>
+
+      <div class="row tight">
+        <input
+          id="localPayload"
+          class="text"
+          spellcheck="false"
+          placeholder="本地 payload.bin 的完整路径（OTA 的 .zip 请先解压）"
+        />
+        <button class="ghost btn-pair" id="btnLocalBrowse" type="button">浏览…</button>
+        <button class="ghost btn-pair" id="btnLocalScan" type="button">扫描分区</button>
+        <button class="primary btn-pair" id="btnLocalExtract" type="button">提取</button>
+      </div>
+      <div class="row tight">
+        <label class="lbl">提取分区</label>
+        <select id="localPart"><option value="">先点「扫描分区」</option></select>
+        <span class="hint">只读该分区对应的数据，不必解整个包</span>
+      </div>
+      <div class="progress slim"><i id="progLocal"></i></div>
+
+      <div class="info" id="infoImage">尚未选择</div>
+    </div>
+
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="step">2</span>
+      <h2>选择 KernelSU APK</h2>
+      <span class="hint">官方 release 版 APK，用于锁定引擎版本</span>
+    </div>
+    <label class="drop" id="dropApk">
+      <input type="file" id="fileApk" accept=".apk,application/vnd.android.package-archive" hidden />
+      <div class="drop-inner">
+        <strong>点击选择</strong><span>或把 APK 拖到这里</span>
+        <em>KernelSU_vX.Y.Z_xxx-release.apk</em>
+      </div>
+    </label>
+    <div class="progress slim"><i id="progApk"></i></div>
+    <div class="info" id="infoApk">尚未选择</div>
+    <div class="row">
+      <label class="lbl">KMI</label>
+      <select id="kmi"><option value="">自动检测</option></select>
+      <span class="hint" id="kmiHint">由镜像内核自动推断；init_boot 不含内核，需手动选择</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <span class="step">3</span>
+      <h2>可选设置</h2>
+      <span class="hint">不填也能正常修补</span>
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="allowShell" /><span>允许 adb shell 永久 root</span></label>
+      <span class="hint">adb root 请用管理器 → 设置 → ADB Root</span>
+      <span class="spacer"></span>
+      <label class="lbl">目标架构</label>
+      <select id="arch"><option>aarch64</option><option>x86_64</option></select>
+    </div>
+  </section>
+
+  <section class="card logcard">
+    <div class="card-head">
+      <h2>运行日志</h2>
+      <span class="spacer"></span>
+      <button class="ghost" id="btnClear" type="button">清空</button>
+    </div>
+    <pre class="log" id="log"></pre>
+  </section>
+
+</main>
+
+<footer class="bar">
+  <div class="status" id="status">等待选择文件</div>
+  <div class="progress"><i id="progMain"></i></div>
+  <a class="primary hidden" id="btnDownload">下载镜像</a>
+  <button class="primary" id="btnPatch" type="button">开始修补</button>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
